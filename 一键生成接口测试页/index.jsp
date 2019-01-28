@@ -15,6 +15,9 @@
 </head>
 <body>
 
+<div id="ContextPath" val="<%=request.getContextPath()%>">
+</div>
+
 <div id="app">
     <h2 style="text-align: center;">接口调试工具</h2>
     <div class="panel-group" id="cord0" style="width: 80%;margin: auto;">
@@ -77,7 +80,8 @@
         el: '#app',
         data: {
             controlList:[],
-            currentMethod:null
+            currentMethod:null,
+            ContextPath:'<%=request.getContextPath()%>'
         },
         mounted () {
             const me = this
@@ -108,7 +112,7 @@
                 $('#resp' + m.id).html('正在请求，请稍等...');
                 $.ajax({
                     //项目根路径 需自行修改（后续版本会实现自动化）
-                    url: '/xwrcisvr_cs'+m.url,
+                    url: me.ContextPath+m.url,
                     method: $('#reqType'+m.id)[0].value,
                     dataType: 'json',
                     data:data,
