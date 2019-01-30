@@ -1,12 +1,17 @@
 package com.xw.project.controller.comm;
 
+import com.xw.core.util.StringUtil;
+import com.xw.project.entity.PersonInfo;
+import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
+import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
@@ -20,16 +25,17 @@ import java.util.*;
 @Controller
 @RequestMapping("/ts")
 public class TSController {
+	private static final String packageName = "com.xw.project.controller";
 	private static LocalVariableTableParameterNameDiscoverer parameterNameDiscoverer = new LocalVariableTableParameterNameDiscoverer();
 	private static String ROOT_PATH;
 	private static List<Class> classList;
 
 	private static List<ControlVo> controlVoList;
+	private static List<packageVo> packageVoList;
 
 	private static Map<String, List<MethodVO>> controlMap;
 
 	static {
-		String packageName = "com.xw.project.controller";
 		URL url = TSController.class.getResource("/");
 		ROOT_PATH = url.getPath();
 		File controller = new File(ROOT_PATH, packageName.replaceAll("\\.", "/"));
@@ -38,12 +44,22 @@ public class TSController {
 		resolveMethod();
 	}
 
+	public static void main(String[] args) {
+		System.out.println(1);
+	}
+
 	@RequestMapping("/getUrl")
 	@ResponseBody
 	public Object getUrl() {
-		return controlVoList;
+		return packageVoList;
 	}
 
+	@RequestMapping("/test")
+	@ResponseBody
+	public PersonInfo test(PersonInfo personInfo) {
+
+		return personInfo;
+	}
 	private static void loadClass(File file) {
 		if (file.isFile()) {
 			String clsName = file.getAbsolutePath().replace(ROOT_PATH, "");
@@ -71,7 +87,6 @@ public class TSController {
 		RequestMapping requestMapping;
 		String baseUrl;
 		MethodVO vo;
-		controlMap = new LinkedHashMap<>();
 		List<MethodVO> methodVOList;
 		ControlVo controlVo;
 		for (Class c : classList) {
@@ -91,25 +106,86 @@ public class TSController {
 					methodVOList.add(vo);
 				}
 			}
-			controlMap.put(baseUrl, methodVOList);
 			controlVo = new ControlVo();
+			controlVo.setPackageName(c.getPackage().getName());
 			controlVo.setUrl(c.getSimpleName());
 			controlVo.setMethodVOS(methodVOList);
 			controlVoList.add(controlVo);
 		}
+
+
+		packageVoList = new ArrayList<>();
+		Set<String> s = new HashSet<>();
+		for (ControlVo cVO : controlVoList) {
+			s.add(cVO.getPackageName());
+		}
+		packageVo packageVo;
+		List<ControlVo> tempControlVoList;
+		for (String s1 : s) {
+			packageVo = new packageVo();
+			tempControlVoList = new ArrayList<>();
+			packageVo.setPackageName(s1);
+			for (ControlVo c : controlVoList) {
+				if (c.getPackageName().equals(s1)) {
+					tempControlVoList.add(c);
+				}
+			}
+			packageVo.setControlVoList(tempControlVoList);
+			packageVoList.add(packageVo);
+		}
+
 	}
 
-	private static List<String> getMethodParameters(Method method) {
-		String[] methodParameterNames = parameterNameDiscoverer.getParameterNames(method);
-		if (methodParameterNames != null && methodParameterNames.length > 0) {
-			return Arrays.asList(methodParameterNames);
+	private static List<ParameterVO> getMethodParameters(Method method) {
+		String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
+		MethodParameter methodParameter;
+		List<ParameterVO> parameterVOList = new ArrayList<>();
+		ParameterVO parameterVO;
+		for (int i = 0; i < method.getParameterCount(); i++) {
+			methodParameter = new MethodParameter(method, i);
+			parameterVO = new ParameterVO();
+			parameterVO.setName(parameterNames[i]);
+			parameterVO.setTypeName(methodParameter.getParameterType().getSimpleName());
+			parameterVOList.add(parameterVO);
 		}
-		return new ArrayList<>();
+		for (Class<?> pType : method.getParameterTypes()) {
+			if (isNotSimpleType(pType)) {
+				for (Field field : pType.getDeclaredFields()) {
+					String fieldName = field.getName();
+					parameterVO = new ParameterVO();
+					parameterVO.setName(fieldName);
+					parameterVO.setTypeName(field.getType().getSimpleName());
+					parameterVOList.add(parameterVO);
+				}
+			}
+		}
+		return parameterVOList;
+	}
+
+	public static class ParameterVO{
+		private String name;
+		private String typeName;
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getTypeName() {
+			return typeName;
+		}
+
+		public void setTypeName(String typeName) {
+			this.typeName = typeName;
+		}
 	}
 
 	public static class MethodVO {
 		private String url;
-		private List<String> parameters;
+		private List<ParameterVO> parameters;
 
 		public String getUrl() {
 			return url;
@@ -119,18 +195,27 @@ public class TSController {
 			this.url = url;
 		}
 
-		public List<String> getParameters() {
+		public List<ParameterVO> getParameters() {
 			return parameters;
 		}
 
-		public void setParameters(List<String> parameters) {
+		public void setParameters(List<ParameterVO> parameters) {
 			this.parameters = parameters;
 		}
 	}
 
 	public static class ControlVo{
+		private String packageName;
 		private String url;
 		private List<MethodVO> methodVOS;
+
+		public String getPackageName() {
+			return packageName;
+		}
+
+		public void setPackageName(String packageName) {
+			this.packageName = packageName;
+		}
 
 		public String getUrl() {
 			return url;
@@ -147,6 +232,35 @@ public class TSController {
 		public void setMethodVOS(List<MethodVO> methodVOS) {
 			this.methodVOS = methodVOS;
 		}
+	}
+
+	public static class packageVo{
+		private String packageName;
+		private List<ControlVo> controlVoList;
+
+		public String getPackageName() {
+			return packageName;
+		}
+
+		public void setPackageName(String packageName) {
+			this.packageName = packageName;
+		}
+
+		public List<ControlVo> getControlVoList() {
+			return controlVoList;
+		}
+
+		public void setControlVoList(List<ControlVo> controlVoList) {
+			this.controlVoList = controlVoList;
+		}
+	}
+
+	private static Boolean isNotSimpleType(Class c){
+		return c != Integer.class && c != int.class
+				&& c != Float.class && c != float.class
+				&& c!=Double.class && c!= double.class
+				&& c!=Boolean.class && c!= boolean.class
+				&& c!= String.class;
 	}
 
 }

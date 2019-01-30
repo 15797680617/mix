@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<%@ page language="java" import="java.util.*" pageEncoding="utf-8"%>
-<%@ page contentType="text/html;charset=utf-8"%>
+<%@ page language="java" import="java.util.*" pageEncoding="utf-8" %>
+<%@ page contentType="text/html;charset=utf-8" %>
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html charset=UTF-8">
@@ -21,48 +21,97 @@
 <div id="app">
     <h2 style="text-align: center;">接口调试工具</h2>
     <div class="panel-group" id="cord0" style="width: 80%;margin: auto;">
-        <div class="panel panel-success" v-for="c in controlList">
+
+        <!--Package层-->
+        <div class="panel panel-default" v-for="p in packageList">
             <div class="panel-heading">
                 <h4 class="panel-title">
                     <a data-toggle="collapse" data-parent="#cord0"
-                       :href="'#'+c.id">
-                        {{c.url}}
+                       :href="'#'+p.id" style="font-size: 28px;">
+                        {{p.packageName}}
                     </a>
                 </h4>
             </div>
-            <div :id="c.id" class="panel-collapse collapse">
+            <div :id="p.id" class="panel-collapse collapse">
                 <div class="panel-body">
 
-                    <div class="panel-group" :id="'cord'+c.id">
-                        <div class="panel panel-info" v-for="m in c.methodVOS">
+                    <!--Controller层-->
+                    <div class="panel-group" :id="'cord'+p.id">
+                        <div class="panel panel-success" v-for="c in p.controlVoList">
                             <div class="panel-heading">
                                 <h4 class="panel-title">
-                                    <a data-toggle="collapse" :data-parent="'#cord'+c.id"
-                                       :href="'#'+m.id" @click="changeMethod(m)">
-                                        {{m.url}}
+                                    <a data-toggle="collapse" :data-parent="'#cord'+p.id"
+                                       :href="'#'+c.id">
+                                        {{c.url}}
                                     </a>
                                 </h4>
                             </div>
-                            <div :id="m.id" class="panel-collapse collapse">
+                            <div :id="c.id" class="panel-collapse collapse">
                                 <div class="panel-body">
 
-                                    <form class="form-inline" role="form" :id="m.url">
-                                        <lanel v-for="p in m.parameters">
-                                            {{p}}：<input type="text" :name="p" class="form-control" placeholder="请输入">&nbsp;
-                                        </lanel>
-                                    </form>
+                                    <!--方法层-->
+                                    <div class="panel-group" :id="'cord'+c.id">
+                                        <div class="panel panel-info" v-for="m in c.methodVOS">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title">
+                                                    <a data-toggle="collapse" :data-parent="'#cord'+c.id"
+                                                       :href="'#'+m.id" @click="changeMethod(m)">
+                                                        {{m.url}}
+                                                    </a>
+                                                </h4>
+                                            </div>
+                                            <div :id="m.id" class="panel-collapse collapse">
+                                                <div class="panel-body">
 
-                                    <button type="button" class="btn btn-primary" style="margin-top: 16px;"
-                                            @click="onRequest(this)">发起请求</button>
+                                                    <table class="table table-striped" :id="m.id">
+                                                        <thead>
+                                                        <tr>
+                                                            <th style="width: 20%;">参数名</th>
+                                                            <th>参数值</th>
+                                                            <th>参数类型</th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                        <tr v-for="p in m.parameters">
+                                                            <td>
+                                                                <input :value="p.name" readonly class="form-control" style="width: 100%;">
+                                                            </td>
+                                                            <td>
+                                                                <input class="form-control" style="width: 100%;">
+                                                            </td>
+                                                            <td>
+                                                                {{p.typeName}}
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
 
-                                    <select :id="'reqType'+m.id" class="form-control" style="display: inline;width: 6%;vertical-align: bottom;">
-                                        <option value="GET">Get</option>
-                                        <option value="POST" selected>Post</option>
-                                    </select>
+                                                    <button type="button" class="btn btn-primary"
+                                                            style="margin-top: 16px;"
+                                                            @click="onRequest(this)">发起请求
+                                                    </button>
 
-                                    <hr />
-                                    响应结果：
-                                    <pre :id="'resp'+m.id" style="white-space: pre-wrap;"> </pre>
+                                                    <button type="button" class="btn btn-warning"
+                                                            style="margin-top: 16px;"
+                                                            @click="formReset(this)">重置表单
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-info" style="margin-top: 16px;"
+                                                            @click="appendParameter(this)">追加参数</button>
+
+                                                    <select :id="'reqType'+m.id" class="form-control"
+                                                            style="display: inline;width: 6%;vertical-align: bottom;">
+                                                        <option value="GET">Get</option>
+                                                        <option value="POST" selected>Post</option>
+                                                    </select>
+
+                                                    <hr/>
+                                                    响应结果：
+                                                    <pre :id="'resp'+m.id" style="white-space: pre-wrap;"> </pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -72,6 +121,7 @@
         </div>
     </div>
 </div>
+</div>
 </body>
 </html>
 
@@ -79,53 +129,75 @@
     var app = new Vue({
         el: '#app',
         data: {
-            controlList:[],
-            currentMethod:null,
-            ContextPath:'<%=request.getContextPath()%>'
+            controlList: [],
+            packageList: [],
+            currentMethod: null,
+            ContextPath: '<%=request.getContextPath()%>'
         },
-        mounted () {
+        mounted() {
             const me = this
-            this.$http.get('ts/getUrl').then(function(res){
+            this.$http.get('ts/getUrl').then(function (res) {
                 console.info(res);
-                me.controlList = res.body;
-                var index = 1;
-                me.controlList.forEach(item=>{
-                    item.id = 'out'+index;
+                me.packageList = res.body;
+                let index = 0;
+                me.packageList.forEach(p => {
+                    p.id = 'p' + index++;
                     var index1 = 1;
-                    item.methodVOS.forEach(i=>{
-                        i.id = index +'in'+ index1++;
-                    })
-                    index++;
+                    p.controlVoList.forEach(c => {
+                        c.id = 'c' + index++;
+                        c.methodVOS.forEach(m => {
+                            m.id = 'm' + index++;
+                        })
+                    });
                 })
             });
         },
-        methods:{
+        methods: {
             onRequest(btn) {
                 const me = this;
                 const m = me.currentMethod;
-                const form = $(document.getElementById(m.url));
-                const arr = form.serializeArray();
+                const trs = $("#" + m.id + " tbody tr");
                 const data = {};
-                arr.forEach(item=>{
-                    data[item.name] = item.value;
-                })
+                trs.each(function (index,e) {
+                    const ips = $(e).find('input');
+                    const key = ips[0].value;
+                    const value = ips[1].value;
+                    if (key != null && key != '' && value!=null && value!='') {
+                        data[key] = value;
+                    }
+                });
                 $('#resp' + m.id).html('正在请求，请稍等...');
                 $.ajax({
                     //项目根路径 需自行修改（后续版本会实现自动化）
-                    url: me.ContextPath+m.url,
-                    method: $('#reqType'+m.id)[0].value,
+                    url: me.ContextPath + m.url,
+                    method: $('#reqType' + m.id)[0].value,
                     dataType: 'json',
-                    data:data,
-                    success: function(res) {
+                    data: data,
+                    success: function (res) {
                         $('#resp' + m.id).html(JSON.stringify(res, null, 2));
                     },
-                    error:function (res) {
-                        $('#resp' + m.id).html('<span style="color: red;">'+JSON.stringify(res, null, 2)+'</span>');
+                    error: function (res) {
+                        $('#resp' + m.id).html('<span style="color: red;">' + JSON.stringify(res, null, 2) + '</span>');
                     }
                 });
             },
-            changeMethod(m){
+            changeMethod(m) {
                 this.currentMethod = m;
+            },
+            formReset() {
+                const me = this;
+                const m = me.currentMethod;
+                const trs = $("#" + m.id + " tbody tr");
+                trs.each(function (index,e) {
+                    const ips = $(e).find('input');
+                    $(ips[1]).val(null)
+                });
+            },
+            appendParameter(btn){
+                const me = this;
+                const m = me.currentMethod;
+                const t = $("#"+m.id+" tbody");
+                t.append('<tr><td><input style="width: 100%;" class="form-control"></td><td><input style="width: 100%;" class="form-control"></td><td></td></tr>');
             }
         }
     })
