@@ -77,7 +77,8 @@
                                                                 <input :value="p.name" readonly class="form-control" style="width: 100%;">
                                                             </td>
                                                             <td>
-                                                                <input class="form-control" style="width: 100%;">
+                                                                <input type="file" v-if="p.file" multiple class="form-control">
+                                                                <input v-else style="width: 100%;" class="form-control">
                                                             </td>
                                                             <td>
                                                                 {{p.typeName}}
@@ -107,7 +108,8 @@
 
                                                     <hr/>
                                                     响应结果：
-                                                    <pre :id="'resp'+m.id" style="white-space: pre-wrap;"> </pre>
+                                                    <iframe v-if="m.file" :id="'respFrame'+m.id" :name="'respFrame'+m.id" style="display: block;width: 100%;"></iframe>
+                                                    <pre v-else :id="'resp'+m.id" style="white-space: pre-wrap;"> </pre>
                                                 </div>
                                             </div>
                                         </div>
@@ -147,6 +149,11 @@
                         c.id = 'c' + index++;
                         c.methodVOS.forEach(m => {
                             m.id = 'm' + index++;
+                            m.parameters.forEach(pm=>{
+                                if (pm.file) {
+                                    m.file = true;
+                                }
+                            })
                         })
                     });
                 })
@@ -158,6 +165,7 @@
                 const m = me.currentMethod;
                 const trs = $("#" + m.id + " tbody tr");
                 const data = {};
+                let isFile = false;
                 trs.each(function (index,e) {
                     const ips = $(e).find('input');
                     const key = ips[0].value;
@@ -165,7 +173,16 @@
                     if (key != null && key != '' && value!=null && value!='') {
                         data[key] = value;
                     }
+                    if (ips[1].type == 'file') {
+                        isFile = true;
+                        return;
+                    }
                 });
+
+                if (isFile) {
+                    me.onRequestFile();
+                    return;
+                }
                 $('#resp' + m.id).html('正在请求，请稍等...');
                 $.ajax({
                     //项目根路径 需自行修改（后续版本会实现自动化）
@@ -180,6 +197,30 @@
                         $('#resp' + m.id).html('<span style="color: red;">' + JSON.stringify(res, null, 2) + '</span>');
                     }
                 });
+            },
+            onRequestFile(){
+                const me = this;
+                const m = me.currentMethod;
+                const trs = $("#" + m.id + " tbody tr");
+                const form = $("<form method='post' target='respFrame"+m.id+"'></form>");
+                form.attr({
+                    'action':me.ContextPath+m.url,
+                    'enctype':'multipart/form-data'
+                });
+                let input;
+                trs.each((index, e) => {
+                    const ips = $(e).find('input');
+                    const key = ips[0].value;
+                    const value = ips[1].value;
+                    if (key != null && key != '' && value!=null && value!='') {
+                        input = $(ips[1]).clone(true);
+                        input.attr({"name":key});
+                        form.append(input);
+                    }
+                });
+                $(document.body).append(form);
+                form.submit();
+                form.remove();
             },
             changeMethod(m) {
                 this.currentMethod = m;

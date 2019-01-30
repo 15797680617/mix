@@ -7,12 +7,15 @@ import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.*;
 
@@ -54,11 +57,11 @@ public class TSController {
 		return packageVoList;
 	}
 
-	@RequestMapping("/test")
+	@RequestMapping("/file")
 	@ResponseBody
-	public PersonInfo test(PersonInfo personInfo) {
+	public Object test(@RequestParam("fileList") MultipartFile[] files,String name) {
 
-		return personInfo;
+		return files.length;
 	}
 	private static void loadClass(File file) {
 		if (file.isFile()) {
@@ -139,13 +142,28 @@ public class TSController {
 	private static List<ParameterVO> getMethodParameters(Method method) {
 		String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
 		MethodParameter methodParameter;
+
 		List<ParameterVO> parameterVOList = new ArrayList<>();
 		ParameterVO parameterVO;
-		for (int i = 0; i < method.getParameterCount(); i++) {
+		Class<?> parameterType;
+
+		Parameter[] parameters = method.getParameters();
+
+		for (int i = 0; i < parameters.length; i++) {
 			methodParameter = new MethodParameter(method, i);
 			parameterVO = new ParameterVO();
 			parameterVO.setName(parameterNames[i]);
-			parameterVO.setTypeName(methodParameter.getParameterType().getSimpleName());
+			parameterType = methodParameter.getParameterType();
+			parameterVO.setTypeName(parameterType.getSimpleName());
+			if (parameterType == MultipartFile.class || parameterType == MultipartFile[].class) {
+				parameterVO.setFile(true);
+				RequestParam requestParam = parameters[i].getAnnotation(RequestParam.class);
+				if (requestParam != null) {
+					if (StringUtil.isNotEmpty(requestParam.value())) {
+						parameterVO.setName(requestParam.value());
+					}
+				}
+			}
 			parameterVOList.add(parameterVO);
 		}
 		for (Class<?> pType : method.getParameterTypes()) {
@@ -165,6 +183,7 @@ public class TSController {
 	public static class ParameterVO{
 		private String name;
 		private String typeName;
+		private Boolean file;
 
 		public String getName() {
 			return name;
@@ -180,6 +199,14 @@ public class TSController {
 
 		public void setTypeName(String typeName) {
 			this.typeName = typeName;
+		}
+
+		public Boolean getFile() {
+			return file;
+		}
+
+		public void setFile(Boolean file) {
+			this.file = file;
 		}
 	}
 
